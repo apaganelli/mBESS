@@ -1,0 +1,38 @@
+﻿<UserControl x:Class="mBESS.ConfigurationView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
+             xmlns:local="clr-namespace:mBESS"
+             mc:Ignorable="d" 
+             d:DesignHeight="340" d:DesignWidth="520"
+             Background="LightYellow">
+    <StackPanel HorizontalAlignment="Center" Orientation="Vertical">
+        <Label>Welcome to modified Balance Error Scoring System - mBESS</Label>
+        <Label />
+        <Label>Firstly, it is necessary to connect to a Wii Balance Board.</Label>
+        <Canvas>
+        <Line Stroke="Black" StrokeThickness="4" Width="350"/>
+        </Canvas>
+        <Label></Label>
+        
+        <CheckBox Name="cbRemoveEntries" Content="Remove existing entries"/>
+        <Label>Removes all bluetooth devices with "Nintendo" in the name.</Label>
+        <Line Stroke="Black" StrokeThickness="4" Width="300"/>
+        <Label />
+
+        <CheckBox Name="cbSkipNameCheck" Content="Skip Device Name Check" />
+        <Label>This will try to pair anything waiting</Label>
+
+        <Line Stroke="Black" StrokeThickness="4" Width="300"/>
+        <Label />
+        <CheckBox Name="cbPermanentSync" Content="Permanent Sync" />
+        <Label>Sends special pin code, the device remembers host bluetooth adapter.</Label>
+        <Label></Label>
+
+        <Button Content="Search and Add Wii Balance Board" Width="200" Click="Button_Click"/>
+
+        <Label />
+        <Label Name="label_Status" Content="----"/>
+    </StackPanel>
+</UserControl>

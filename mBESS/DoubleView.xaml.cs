@@ -16,13 +16,18 @@ using System.Windows.Shapes;
 namespace mBESS
 {
     /// <summary>
-    /// Interaction logic for MainWindow.xaml
+    /// Interaction logic for DoubleView.xaml
     /// </summary>
-    public partial class MainWindow : Window
+    public partial class DoubleView : UserControl
     {
-        public MainWindow()
+        public DoubleView()
         {
             InitializeComponent();
+        }
+
+        private void kinectBodyViewbox_Loaded(object sender, RoutedEventArgs e)
+        {
+            // ((Viewbox)sender).DataContext = ((DoubleCalibrationViewModel)DataContext).GetKinectBodyView();
         }
     }
 }

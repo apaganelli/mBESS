@@ -1,0 +1,165 @@
+﻿<UserControl x:Class="mBESS.DoubleView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
+             xmlns:local="clr-namespace:mBESS"
+             mc:Ignorable="d" 
+             d:DesignHeight="300" d:DesignWidth="550">
+    <UserControl.Resources>
+        <!-- First Page, instructions, position picture and start recording button -->
+        <DataTemplate DataType="{x:Type local:DoubleViewModel}">
+            <Grid Background="Azure">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+
+                <StackPanel Grid.Column="0">
+                    <Label>Double Stance Position</Label>
+                    <Label />
+                    <Image Height="200" Width="130" Source="C:\Users\anton\source\repos\mBESS\mBESS\bin\x64\Debug\DoubleStance-BESS.jpg" />
+                </StackPanel>
+
+                <Grid Grid.Column="1">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="5*" />
+                        <RowDefinition Height="1*" />
+                        <RowDefinition Height="1*" />
+                    </Grid.RowDefinitions>
+                    <StackPanel Grid.Row="0">
+                        <Label>You should stand still in the double stance position for 30 seconds.</Label>
+                        <Label>Step on the balance board platform.</Label>
+                        <Label>Keep your eyes closed, your feet together and your hands in your hips.</Label>
+                        <Label>Like in the position showed in picture on the left.</Label>
+                        <Label>First, with your eyes open stay at double stance position for 5 seconds.</Label>
+                        <Label>The system will record your position. To start that, press the button Start Recording.</Label>
+                    </StackPanel>
+
+                    <StackPanel Grid.Row="1" Orientation="Horizontal">
+                        <Button Content="Start Recording" Width="90" Command="{Binding StartRecordingCommand}"  HorizontalAlignment="Left" Margin="20,10,20,10"/>
+                    </StackPanel>
+                </Grid>
+            </Grid>
+        </DataTemplate>
+        
+        <!-- Second Page, recording and calibration =================================================================== -->
+        <DataTemplate DataType="{x:Type local:DoubleCalibrationViewModel}" x:Name="DT_DCVM">
+            <Grid>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="1*" />
+                    <RowDefinition Height="8*" />
+                    <RowDefinition Height="1*" />
+                    <RowDefinition Height="1*" />
+                </Grid.RowDefinitions>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="auto" />
+                    <ColumnDefinition Width="auto" />
+                </Grid.ColumnDefinitions>
+
+                <Label Grid.Column="0" Grid.ColumnSpan="2" HorizontalAlignment="Center">Calibration Recording</Label>
+
+                <Grid Grid.Row="1" Grid.Column="0">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="1*" />
+                        <RowDefinition Height="1*" />
+                    </Grid.RowDefinitions>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="auto" />
+                        <ColumnDefinition Width="auto" />
+                    </Grid.ColumnDefinitions>
+                    
+                    <!-- Show WBB corner values -->
+                    <GroupBox Grid.Row="0" Grid.Column="0" Header="Raw Weight" HorizontalAlignment="Left" VerticalAlignment="Top"
+                          Height="100" Width="120">
+                        <Grid Width="120" Height="100">
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="auto" />
+                                <RowDefinition Height="auto" />
+                                <RowDefinition Height="auto" />
+                            </Grid.RowDefinitions>
+                            
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="1*" />
+                                <ColumnDefinition Width="1*" />
+                            </Grid.ColumnDefinitions>
+
+                            <TextBox Text="{Binding Path=RWTopLeft, Mode=OneWay, StringFormat=N1}" Grid.Row="0" Grid.Column="0" HorizontalAlignment="Center" IsEnabled="False"/>
+                            <TextBox Text="{Binding Path=RWTopRight, StringFormat=N1}" Grid.Row="0" Grid.Column="1" HorizontalAlignment="Center" IsEnabled="False" />
+                            <TextBox Text="{Binding Path=RWBottomLeft, StringFormat=N1}" Grid.Row="1" Grid.Column="0" HorizontalAlignment="Center" IsEnabled="False"/>
+                            <TextBox Text="{Binding Path=RWBottomRight, StringFormat=N1}" Grid.Row="1" Grid.Column="1" HorizontalAlignment="Center" IsEnabled="False"/>
+                            <TextBox Text="{Binding Path=RWTotalWeight, StringFormat=N1}" Grid.Row="2" Grid.ColumnSpan="2" HorizontalAlignment="Center" IsEnabled="False"/>
+                        </Grid>
+                    </GroupBox>
+
+                    <GroupBox Grid.Row="0" Grid.Column="1" Header="Offset Weight" HorizontalAlignment="Left" VerticalAlignment="Top"
+                          Height="100" Width="120">
+                        <Grid Width="120" Height="100">
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="auto" />
+                                <RowDefinition Height="auto" />
+                                <RowDefinition Height="auto" />
+                            </Grid.RowDefinitions>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="1*" />
+                                <ColumnDefinition Width="1*" />
+                            </Grid.ColumnDefinitions>
+
+                            <TextBox Text="{Binding Path=OWTopLeft, Mode=OneWay, StringFormat=N1}" Grid.Row="0" Grid.Column="0" HorizontalAlignment="Center" IsEnabled="False"/>
+                            <TextBox Text="{Binding Path=OWTopRight, StringFormat=N1}" Grid.Row="0" Grid.Column="1" HorizontalAlignment="Center" IsEnabled="False" />
+                            <TextBox Text="{Binding Path=OWBottomLeft, StringFormat=N1}" Grid.Row="1" Grid.Column="0" HorizontalAlignment="Center" IsEnabled="False"/>
+                            <TextBox Text="{Binding Path=OWBottomRight, StringFormat=N1}" Grid.Row="1" Grid.Column="1" HorizontalAlignment="Center" IsEnabled="False"/>
+                            <TextBox Text="{Binding Path=OWTotalWeight, StringFormat=N1}" Grid.Row="2" Grid.ColumnSpan="2" HorizontalAlignment="Center" IsEnabled="False"/>
+                        </Grid>
+                    </GroupBox>
+
+                    <StackPanel Grid.Row="1" Grid.Column="0" Orientation="Vertical" Background="Blue" Margin="0,10,10,10">
+                        <Label>Center of Gravity - X offset</Label>
+                        <TextBlock Text="{Binding Path=CoGX, StringFormat=N1}" HorizontalAlignment="Center" />
+                        <Label>Calculated CoP X</Label>
+                        <TextBlock Text="{Binding Path=CalculatedCoPX, StringFormat=N0}" HorizontalAlignment="Center" />
+                        <Label>Calibrated Weight in Kg</Label>
+                        <TextBlock Text="{Binding Path=ZeroCalWeight, StringFormat=N1}" HorizontalAlignment="Center" />
+                    </StackPanel>
+
+                    <StackPanel Grid.Row="1" Grid.Column="1" Orientation="Vertical" Background="Green" Margin="0,10,10,10">
+                        <Label>Center of Gravity - Y offset</Label>
+                        <TextBlock Grid.Row="1" Grid.Column="0" Text="{Binding Path=CoGY, StringFormat=N1}" HorizontalAlignment="Center" />
+                        <Label>Calculated CoP Y</Label>
+                        <TextBlock Text="{Binding Path=CalculatedCoPY, StringFormat=N0}" HorizontalAlignment="Center"  />
+                    </StackPanel>
+                </Grid>
+
+                <!-- Show Kinect skeleton -->
+                <Viewbox x:Name="kinectBodyViewbox" Grid.Row="1" Grid.Column="1" HorizontalAlignment="Center" Loaded="kinectBodyViewbox_Loaded">
+                    <Image Margin="10,10,10,10" Source="{Binding ImageSource}" Stretch="UniformToFill" />
+                </Viewbox>
+
+                <StackPanel Grid.Row="2" Grid.ColumnSpan="2" Orientation="Horizontal">
+                    <!-- Start receiving WBB signal -->
+                    <Button Content="Connect WBB" Width="90" Command="{Binding ConnectWBBCommand}" Margin="20,0,20,10" />
+                                        
+                    <!-- Gets mean value of the zero weight raw signal -->
+                    <Button Content="Zero Calibration" Width="90" Command="{Binding ZeroCommand}" Margin="20,0,20,10" />
+                    
+                    <!-- Gets the position values of reference position -->
+                    <Button Content="Body Calibration" Width="90"  Command="{Binding StartBodyCalibrationCommand}" Margin="20,0,20,10" />
+                    
+                    <!-- Gets posture sway and executes test -->
+                    <Button Content="Start Test" Width="90" Command="{Binding StartTestCommand}" HorizontalAlignment="Left" Margin="20,0,20,10" />
+
+                    <!-- Return to previous page -->
+                    <Button Content="Cancel" Width="90" Command="{Binding CancelCommand}" Margin="20,0,20,10" />
+                </StackPanel>
+
+                <TextBlock Grid.Row="3" Grid.ColumnSpan="2"  Text="{Binding Path=StatusText}" VerticalAlignment="Center"/>
+
+            </Grid>
+        </DataTemplate>
+    </UserControl.Resources>
+
+    <Grid>
+        <ContentControl Content="{Binding}" />
+    </Grid>
+
+</UserControl>

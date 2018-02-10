@@ -140,6 +140,7 @@ namespace mBESS
         {
             SelectedId = SessionId;
             Status = "Session Id " + SessionId.ToString() + " was selected.";
+            _app.participantId = SessionId;
         }
     }
 }

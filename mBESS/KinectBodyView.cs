@@ -3,7 +3,10 @@ using System.Collections.Generic;
 using System.Windows.Media;
 
 using Microsoft.Kinect;
+using Microsoft.Kinect.Face;
+
 using System.Windows;
+using System.Globalization;
 
 namespace mBESS
 {
@@ -21,6 +24,8 @@ namespace mBESS
         /// Radius of drawn hand circles
         /// </summary>
         private const double HandSize = 10;
+
+        private const double CoMSize = 5;
 
         /// <summary>
         /// Thickness of drawn joint lines
@@ -102,12 +107,26 @@ namespace mBESS
         /// </summary>
         private List<Pen> bodyColors;
 
+        // Face recognition attributes and variables
+        FaceFrameSource _faceSource = null;            
+        FaceFrameReader _faceReader = null;
+        FaceFrameResult _faceResult = null;
+
         ApplicationViewModel _app;
+
+        /// <summary>
+        /// Checks if a pose is stable.
+        /// </summary>
+        public PoseDoubleStance poseDoubleStance;
+
+        CenterOfMass _CoM;
 
         public KinectBodyView(ApplicationViewModel app)
         {
             // Gets application pointer.
             _app = app;
+
+            _CoM = new CenterOfMass(_app);
 
             // Gets Kinect sensor reference.
             _sensor = KinectSensor.GetDefault();
@@ -131,12 +150,34 @@ namespace mBESS
                 // get size of joint space
                 this.displayWidth = frameDescription.Width;
                 this.displayHeight = frameDescription.Height;
+
+                _faceSource = new FaceFrameSource(_sensor, 0, FaceFrameFeatures.LeftEyeClosed | FaceFrameFeatures.RightEyeClosed);
+                _faceReader = _faceSource.OpenReader();
+
+                _faceReader.FrameArrived += FaceReader_FrameArrived;
             }
 
             // Sets flag for recording DoubleStance position references to false
             RecordDoubleStance = false;
+            ExecuteDoubleStanceTest = false;
+
+            poseDoubleStance = new PoseDoubleStance(_app);
 
             CreateBones();
+        }
+
+
+        bool _addEyeError = true;
+
+        private void FaceReader_FrameArrived(object sender, FaceFrameArrivedEventArgs e)
+        {
+            using(var frame = e.FrameReference.AcquireFrame())
+            {
+                if(frame != null)
+                {
+                    _faceResult = frame.FaceFrameResult;
+                }
+            }
         }
 
         /// <summary>
@@ -174,6 +215,12 @@ namespace mBESS
         }
 
         int _dsCounter = 0;
+        int _dsPoseErrorCounter = 0;
+        int _dsEyesErrorCounter = 0;
+        int _NumFramesThresholdError = 15;
+        int _lastNOK_Type = 0;
+        double _frameNumId = 0;
+        double _skipFrames = 0;
 
         /// <summary>
         /// Updates the body array with new information from the sensor
@@ -196,7 +243,19 @@ namespace mBESS
 
                         if (body.IsTracked)
                         {
+                            _faceSource.TrackingId = body.TrackingId;
                             IReadOnlyDictionary<JointType, Joint> joints = body.Joints;
+
+                            // Calculate Center of Mass using segment method.
+                            CameraSpacePoint CoM = _CoM.CalculateCoM(joints);
+
+                            if (CoM.Z < 0)
+                            {
+                                CoM.Z = InferredZPositionClamp;
+                            }
+
+                            DepthSpacePoint Location_CoM = coordinateMapper.MapCameraPointToDepthSpace(CoM);
+                            Point CoM_Point = new Point(Location_CoM.X, Location_CoM.Y);
 
                             // UpdateJointPosition(joints);
 
@@ -218,30 +277,164 @@ namespace mBESS
                                 jointPoints[jointType] = new Point(depthSpacePoint.X, depthSpacePoint.Y);
                             }
 
+
+                            // Pose calibration, recording positions to get a reference of them when they are theoretically stable.
                             if(RecordDoubleStance)
                             { 
-                                if(_dsCounter < _app.DSReference.Length)
-                                {                                   
-                                    _app.DSReference[_dsCounter].handLeft = joints[JointType.HandLeft];
-                                    _app.DSReference[_dsCounter].handRight = joints[JointType.HandRight];
-                                    _app.DSReference[_dsCounter].footLeft = joints[JointType.FootLeft];
-                                    _app.DSReference[_dsCounter].footRight = joints[JointType.FootRight];
-                                    _app.DSReference[_dsCounter].head = joints[JointType.Head];
-                                    _app.DSReference[_dsCounter].spineMid = joints[JointType.SpineMid];
-                                    _app.DSReference[_dsCounter].spineBase = joints[JointType.SpineBase];
-                                    _dsCounter++;
+                                if(_dsCounter < ApplicationViewModel.MaxFramesReference)
+                                {
+                                    _app.DSFL_X.Add(joints[JointType.FootLeft].Position.X);
+                                    _app.DSFL_Y.Add(joints[JointType.FootLeft].Position.Y);
+                                    _app.DSFL_Z.Add(joints[JointType.FootLeft].Position.Z);
 
+                                    _app.DSFR_X.Add(joints[JointType.FootRight].Position.X);
+                                    _app.DSFR_Y.Add(joints[JointType.FootRight].Position.Y);
+                                    _app.DSFR_Z.Add(joints[JointType.FootRight].Position.Z);
+
+                                    _app.DSHL_X.Add(joints[JointType.HandLeft].Position.X);
+                                    _app.DSHL_Y.Add(joints[JointType.HandLeft].Position.Y);
+                                    _app.DSHL_Z.Add(joints[JointType.HandLeft].Position.Z);
+
+                                    _app.DSHR_X.Add(joints[JointType.HandRight].Position.X);
+                                    _app.DSHR_Y.Add(joints[JointType.HandRight].Position.Y);
+                                    _app.DSHR_Z.Add(joints[JointType.HandRight].Position.Z);
+
+                                    _app.DSHE_X.Add(joints[JointType.Head].Position.X);
+                                    _app.DSHE_Y.Add(joints[JointType.Head].Position.Y);
+                                    _app.DSHE_Z.Add(joints[JointType.Head].Position.Z);
+
+                                    _app.DSSM_X.Add(joints[JointType.SpineMid].Position.X);
+                                    _app.DSSM_Y.Add(joints[JointType.SpineMid].Position.Y);
+                                    _app.DSSM_Z.Add(joints[JointType.SpineMid].Position.Z);
+
+                                    _app.DSSB_X.Add(joints[JointType.SpineBase].Position.X);
+                                    _app.DSSB_Y.Add(joints[JointType.SpineBase].Position.Y);
+                                    _app.DSSB_Z.Add(joints[JointType.SpineBase].Position.Z);
+
+                                    _dsCounter++;
                                     // Adds 50 ms to counter.
-                                    _app.BodyCalibrationCounter += 50;
+                                    _app.PoseCalibrationCounter += 50;
                                 }    
                             } else
                             {
+                                if(_dsCounter > 0)
+                                {
+                                    poseDoubleStance.CalculatedStandardJoints();
+                                }
+
                                 _dsCounter = 0;
+                            }
+
+                            // Checks if user is in the right pose (balanced) or unbalanced
+                            if(ExecuteDoubleStanceTest)
+                            {
+                                Util.TrackingState trackingState = poseDoubleStance.Tracker(body);
+
+                                _frameNumId++;
+                                _skipFrames--;          // delay after counting an error to be back to position without counting new errors.
+
+                                switch(trackingState)
+                                {
+                                    case Util.TrackingState.Identified:             // the test is over
+                                        ExecuteDoubleStanceTest = false;
+                                        ((DoubleCalibrationViewModel)_app.CurrentPageViewModel).StatusText = "Finished sucessfully";
+                                        _dsPoseErrorCounter = 0;
+                                        break;
+
+                                    case Util.TrackingState.NotIdentified:          // a pose error
+                                        ((DoubleCalibrationViewModel)_app.CurrentPageViewModel).StatusText = "Double stance pose with error. # of errors: " + ((DoubleCalibrationViewModel)_app.CurrentPageViewModel).TotalDoubleStanceError;
+
+                                        if (poseDoubleStance.NOK_Type != _lastNOK_Type)
+                                        {
+                                            if(_skipFrames < 0) _dsPoseErrorCounter++;
+                                        }
+
+                                        if(_dsPoseErrorCounter > _NumFramesThresholdError)
+                                        {
+                                            _dsPoseErrorCounter = 0;
+                                            _lastNOK_Type = poseDoubleStance.NOK_Type;
+                                            ((DoubleCalibrationViewModel)_app.CurrentPageViewModel).TotalDoubleStanceError++;
+
+                                            if (_lastNOK_Type > 7) // foot displacement in general causes hand and trunk displacement, give 1 second to return to position.
+                                                _skipFrames = 30;
+                                        }
+
+                                        break;
+
+                                    case Util.TrackingState.Ongoing:                // it is okay, keep going.
+                                        ((DoubleCalibrationViewModel)_app.CurrentPageViewModel).StatusText = "Double stance pose is okay. # errors: " + ((DoubleCalibrationViewModel)_app.CurrentPageViewModel).TotalDoubleStanceError;
+                                        _dsPoseErrorCounter = 0;
+                                        _lastNOK_Type = 0;
+                                        _skipFrames = 0;
+                                        break;
+                                }
+                            }   // end execute double stance test - analyze posture.
+
+
+                            // Text to show eyes status on drawing space.
+                            string faceText = "EYES: ";
+
+                            // Only analyze eyes if it has a tracked faced.
+                            if (_faceResult != null)
+                            {
+                                var eyeLeftClosed = _faceResult.FaceProperties[FaceProperty.LeftEyeClosed];
+                                var eyeRightClosed = _faceResult.FaceProperties[FaceProperty.RightEyeClosed];
+
+                                if (eyeLeftClosed == DetectionResult.No || eyeRightClosed == DetectionResult.No)
+                                {
+                                    if (eyeLeftClosed == DetectionResult.No) faceText += "LEFT ";
+                                    if (eyeRightClosed == DetectionResult.No) faceText += "RIGHT ";
+                                    faceText += "OPEN";
+
+                                    if (_addEyeError)
+                                    {
+                                        // Only update error and status messages if test is on.
+                                        if (ExecuteDoubleStanceTest)
+                                        {
+
+                                            if (_dsEyesErrorCounter > _NumFramesThresholdError)
+                                            {
+                                                ((DoubleCalibrationViewModel)_app.CurrentPageViewModel).TotalDoubleStanceError++;
+                                                ((DoubleCalibrationViewModel)_app.CurrentPageViewModel).StatusText = "Eye(s) opened error";
+                                                _dsEyesErrorCounter = 0;
+
+                                                _addEyeError = false;
+                                            }
+                                            else
+                                            {
+                                                _dsEyesErrorCounter++;
+                                            }
+                                        }                                        
+                                    }
+                                }
+                                else
+                                {
+                                    faceText += "CLOSED";
+                                    _dsEyesErrorCounter = 0;
+
+                                    if (!_addEyeError)
+                                    {
+                                        _addEyeError = true;
+
+                                    }
+                                }
+
+                                Point textLocation = new Point(10, 10);
+
+                                dc.DrawText(new FormattedText(
+                                            faceText,
+                                            CultureInfo.GetCultureInfo("en-us"),
+                                            FlowDirection.LeftToRight,
+                                            new Typeface("Georgia"),
+                                            30,                                        // Font size 
+                                            Brushes.White),
+                                            textLocation);
                             }
 
                             this.DrawBody(joints, jointPoints, dc, drawPen, true);
                             this.DrawHand(body.HandLeftState, jointPoints[JointType.HandLeft], dc);
                             this.DrawHand(body.HandRightState, jointPoints[JointType.HandRight], dc);
+                            dc.DrawEllipse(Brushes.White, null, CoM_Point, CoMSize, CoMSize);
                         }
                     }
 
@@ -410,8 +603,9 @@ namespace mBESS
             get { return this.imageSource; }
         }
 
-
+#region Properties
         public bool RecordDoubleStance { get; set; }
-
+        public bool ExecuteDoubleStanceTest { get; set; }
+#endregion
     }
 }

@@ -5,8 +5,9 @@
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
              xmlns:local="clr-namespace:mBESS"
              mc:Ignorable="d" 
-             d:DesignHeight="300" d:DesignWidth="550">
+             d:DesignHeight="450" d:DesignWidth="1600">
     <UserControl.Resources>
+
         <!-- First Page, instructions, position picture and start recording button -->
         <DataTemplate DataType="{x:Type local:DoubleViewModel}">
             <Grid Background="Azure">
@@ -49,6 +50,7 @@
                 <Grid.RowDefinitions>
                     <RowDefinition Height="1*" />
                     <RowDefinition Height="8*" />
+                    <RowDefinition Height="1*" />
                     <RowDefinition Height="1*" />
                     <RowDefinition Height="1*" />
                 </Grid.RowDefinitions>
@@ -143,17 +145,48 @@
                     <Button Content="Zero Calibration" Width="90" Command="{Binding ZeroCommand}" Margin="20,0,20,10" />
                     
                     <!-- Gets the position values of reference position -->
-                    <Button Content="Body Calibration" Width="90"  Command="{Binding StartBodyCalibrationCommand}" Margin="20,0,20,10" />
+                    <Button Content="Pose Calibration" Width="100"  Command="{Binding StartPoseCalibrationCommand}" Margin="20,0,20,10" />
                     
                     <!-- Gets posture sway and executes test -->
                     <Button Content="Start Test" Width="90" Command="{Binding StartTestCommand}" HorizontalAlignment="Left" Margin="20,0,20,10" />
 
+                    <!-- Store results -->
+                    <Button Content="Save" Width="90" Command="{Binding SaveCommand}" HorizontalAlignment="Left" Margin="20,0,20,10" />
+                                        
                     <!-- Return to previous page -->
                     <Button Content="Cancel" Width="90" Command="{Binding CancelCommand}" Margin="20,0,20,10" />
+                                        
                 </StackPanel>
 
-                <TextBlock Grid.Row="3" Grid.ColumnSpan="2"  Text="{Binding Path=StatusText}" VerticalAlignment="Center"/>
+                <TextBlock Grid.Row="3" Grid.Column="0"  Text="{Binding Path=StatusText}" VerticalAlignment="Center"/>
+                <TextBlock Grid.Row="3" Grid.Column="1" Text="{Binding Path=TestTime}" VerticalAlignment="Center" />
 
+                <Grid Grid.Row="4" Grid.ColumnSpan="2">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="1*" />
+                        <RowDefinition Height="1*" />
+                    </Grid.RowDefinitions>
+                    
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="250"/>
+                        <ColumnDefinition Width="250"/>
+                        <ColumnDefinition Width="250"/>
+                        <ColumnDefinition Width="250"/>
+                        <ColumnDefinition Width="250"/>
+                    </Grid.ColumnDefinitions>
+
+                    <Label Grid.Row="0" Grid.Column="0" Content="Time (ms) / Left Foot" HorizontalAlignment="Center"/>
+                    <Label Grid.Row="0" Grid.Column="1" Content="Right Foot" HorizontalAlignment="Center"/>
+                    <Label Grid.Row="0" Grid.Column="2" Content="Left Hand" HorizontalAlignment="Center"/>
+                    <Label Grid.Row="0" Grid.Column="3" Content="Right Hand" HorizontalAlignment="Center"/>
+                    <Label Grid.Row="0" Grid.Column="4" Content="Trunk" HorizontalAlignment="Center"/>
+
+                    <TextBlock Grid.Row="1" Grid.Column="0"  Text="{Binding Path=LeftFoot}" MaxWidth="250" HorizontalAlignment="Center" />
+                    <TextBlock Grid.Row="1" Grid.Column="1" Text="{Binding Path=RightFoot}" MaxWidth="250" HorizontalAlignment="Center" />
+                    <TextBlock Grid.Row="1" Grid.Column="2" Text="{Binding Path=LeftHand}" MaxWidth="250" HorizontalAlignment="Center" />
+                    <TextBlock Grid.Row="1" Grid.Column="3" Text="{Binding Path=RightHand}"  MaxWidth="250" HorizontalAlignment="Center" />
+                    <TextBlock Grid.Row="1" Grid.Column="4" Text="{Binding Path=TrunkSway}" MaxWidth="250"  HorizontalAlignment="Center" />
+                </Grid>
             </Grid>
         </DataTemplate>
     </UserControl.Resources>

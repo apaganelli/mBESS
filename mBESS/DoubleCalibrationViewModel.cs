@@ -13,13 +13,17 @@ namespace mBESS
         ApplicationViewModel _app;
 
         Wiimote wiiDevice = new Wiimote();
+#region ICommnad attributes
 
         ICommand _connectWBBCommand;
         ICommand _cancelCommand;
         ICommand _zeroCommand;
-        ICommand _startBodyCalibrationCommand;
+        ICommand _startPoseCalibrationCommand;
         ICommand _startTestCommand;
+        ICommand _saveCommand;
+        #endregion
 
+#region WBB variable attributes
         float _rwWeight;
         float _rwTopLeft;
         float _rwTopRight;
@@ -47,11 +51,14 @@ namespace mBESS
 
         float _zeroCalWeight;
         string _statusText;
+        string _testTime;
+#endregion
 
         bool _canConnectWBB = true;
-        bool _startBodyCalibration = false;
-        bool _bodyCalibrationDone = false;
+        bool _startPoseCalibration = false;
+        bool _poseCalibrationDone = false;
         bool _zeroCalibrationDone = false;
+        bool _finishedTest = false;
 
         bool _doZeroCalibration = false;
         int i = 0;
@@ -59,6 +66,7 @@ namespace mBESS
 
         KinectBodyView _kinectBV;
 
+#region Filter declaration variables
         FilterARMA filterTR;
         FilterARMA filterTL;
         FilterARMA filterBR;
@@ -68,6 +76,14 @@ namespace mBESS
         FilterARMA filterWeight;
         FilterARMA filterCoPX;
         FilterARMA filterCoPY;
+#endregion
+
+        string _leftFoot;
+        string _rightFoot;
+        string _leftHand;
+        string _rightHand;
+        string _trunkSway;
+
 
         /// <summary>
         /// Timer to read WBB info. Interval in ms, enabled if the event should be triggered.
@@ -78,7 +94,6 @@ namespace mBESS
         public DoubleCalibrationViewModel(ApplicationViewModel app)
         {
             int filterSize = 10;
-
             _app = app;
             _kinectBV = new KinectBodyView(app);
 
@@ -98,31 +113,53 @@ namespace mBESS
 
         public void LoadCalibrationViewModel()
         {
-            _app.BodyCalibrationCounter = 0;
+            _app.PoseCalibrationCounter = 0;
+            TotalDoubleStanceError = 0;
+
             // Setup a timer which controls the rate at which updates are processed.
             infoUpdateTimer.Elapsed += new ElapsedEventHandler(infoUpdateTimer_Elapsed);
         }
 
+        public DateTime DoubleStanceStartTestTime;
+
         private void infoUpdateTimer_Elapsed(object sender, ElapsedEventArgs e)
         {
             // Start timer of recording double stance joint positions for reference.
-            if(_startBodyCalibration)
+            if(_startPoseCalibration)
             {
-                StatusText = "Start timer for recording double stance pose "  + _app.BodyCalibrationCounter;
+                StatusText = "Start timer for recording double stance pose "  + _app.PoseCalibrationCounter;
+                LeftFoot = "";
+                RightFoot = "";
+                LeftHand = "";
+                RightHand = "";
+                TrunkSway = "";
 
                 // 5000 mseconds 
-                if (_app.BodyCalibrationCounter >= 5000)
+                if (_app.PoseCalibrationCounter >= 5000)
                 {
-                    _app.BodyCalibrationCounter = 0;
-                    _bodyCalibrationDone = true;
-                    _startBodyCalibration = false;
+                    _app.PoseCalibrationCounter = 0;
+                    _poseCalibrationDone = true;
+                    _startPoseCalibration = false;
                     _kinectBV.RecordDoubleStance = false;
                     StatusText = "Finished timer for recording double stance pose";
-                } 
+                }
+
+            if(_kinectBV.ExecuteDoubleStanceTest)
+            {
+                int seconds = (DateTime.Now - DoubleStanceStartTestTime).Seconds;
+                this.TestTime = "Test time in seconds: " + String.Format("{0:00}", (DateTime.Now - DoubleStanceStartTestTime).Seconds);
+
+                if(seconds >= _app.TestTime)
+                {
+                    _kinectBV.ExecuteDoubleStanceTest = false;
+                    _kinectBV.poseDoubleStance.StopWatch.Stop();
+                    StatusText = "Test finished with " + TotalDoubleStanceError + " errors.";
+                    _finishedTest = true;
+                }
             }
 
             // working without WBB
-            return;
+            // return;
 
             // Get the current raw sensor KG values.
             var rwWeight = wiiDevice.WiimoteState.BalanceBoardState.WeightKg;
@@ -132,18 +169,18 @@ namespace mBESS
             var rwBottomRight = wiiDevice.WiimoteState.BalanceBoardState.SensorValuesKg.BottomRight;
 
             // Calibrate zero weight when the board is unloaded.
-            if (_doZeroCalibration && i < 120)
+            if (_doZeroCalibration && i < 100)
             {
                 i++;
                 zeroWeight += rwWeight;
-                StatusText = "Calibrating zero weight";
+                StatusText = "Calibrating Zero Weight.";
             } else
             {
                 if (_doZeroCalibration)
                 {
                     _zeroCalibrationDone = true;
-                    zeroWeight = zeroWeight / 120;
-                    StatusText = "Calibrate zero weight finished";
+                    zeroWeight = zeroWeight / 100;
+                    StatusText = "Calibrate Zero Weight FINISHED.";
                 }
                 _doZeroCalibration = false;
             }
@@ -158,7 +195,6 @@ namespace mBESS
             // CoPx = (L/2) * ((TR + BR) - (TL + BL)) / TR + BR + TL + BL
             // CoPy = (W/2) * ((TL + TR) - (BL + BR)) / TR + BR + TL + BL
             // W = 228 mm and L = 433mm
-
             CalculatedCoPX =  filterCoPX.GetPoint(21 * (((RWTopRight + RWBottomRight) - (RWTopLeft + RWBottomLeft)) / (RWBottomLeft + RWBottomRight + RWTopLeft + RWTopRight)));
             CalculatedCoPY = filterCoPY.GetPoint(12 * (((RWTopRight + RWTopLeft) - (RWBottomRight + RWBottomLeft)) / (RWBottomLeft + RWBottomRight + RWTopLeft + RWTopRight)));
 
@@ -233,16 +269,16 @@ namespace mBESS
             }
         }
 
-        public ICommand StartBodyCalibrationCommand
+        public ICommand StartPoseCalibrationCommand
         {
             get
             {
-                if (_startBodyCalibrationCommand == null)
+                if (_startPoseCalibrationCommand == null)
                 {
-                    _startBodyCalibrationCommand = new RelayCommand(param => StartBodyCalibration(), param => _zeroCalibrationDone);
+                    _startPoseCalibrationCommand = new RelayCommand(param => StartPoseCalibration(), param => _zeroCalibrationDone);
                 }
 
-                return _startBodyCalibrationCommand;
+                return _startPoseCalibrationCommand;
             }
         }
 
@@ -265,10 +301,23 @@ namespace mBESS
             {
                 if (_startTestCommand == null)
                 {
-                    _startTestCommand = new RelayCommand(param => StartTest(), param => _bodyCalibrationDone);
+                    _startTestCommand = new RelayCommand(param => StartTest(), param => _poseCalibrationDone);
                 }
 
                 return _startTestCommand;
+            }
+        }
+
+        public ICommand SaveCommand
+        {
+            get
+            {
+                if(_saveCommand == null)
+                {
+                    _saveCommand = new RelayCommand(param => Save(), param => _finishedTest);
+                }
+
+                return _saveCommand;
             }
         }
 
@@ -287,38 +336,13 @@ namespace mBESS
         #endregion
 
         #region CommandFunctions
-
-        private void StartBodyCalibration()
-        {
-            _bodyCalibrationDone = false;
-            _startBodyCalibration = true;           // flag that signals timer to count five seconds.
-            _kinectBV.RecordDoubleStance = true;   
-        }
-
-        private void StartTest()
-        {
-
-        }
-
-        private void Cancel()
-        {
-            infoUpdateTimer.Enabled = false;
-            wiiDevice.Disconnect();
-            _canConnectWBB = true;
-            _app.CurrentPageViewModel = _app.PreviousPageViewModel;
-        }
-
-        public string Name => throw new NotImplementedException();
-        #endregion
-
         private void ConnectWiiBalanceBoard()
         {
-
-            // Next 4 lines Working without WBB
-            infoUpdateTimer.Enabled = true;
-            _canConnectWBB = false;
-            _zeroCalibrationDone = true;
-            return;
+            // Uncomment next 4 lines to run without a WBB connected
+            // infoUpdateTimer.Enabled = true;
+            // _canConnectWBB = false;
+            // _zeroCalibrationDone = true;
+            // return;
 
             try
             {
@@ -364,7 +388,34 @@ namespace mBESS
             }
         }
 
-   
+        private void StartPoseCalibration()
+        {
+            _poseCalibrationDone = false;
+
+            ClearAppDSRecords();
+            _startPoseCalibration = true;           // flag that signals timer to count five seconds.
+            _kinectBV.RecordDoubleStance = true;   
+        }
+
+        private void StartTest()
+        {
+            TotalDoubleStanceError = 0;
+            _finishedTest = false;
+            DoubleStanceStartTestTime = DateTime.Now;
+            _kinectBV.poseDoubleStance.StopWatch.Reset();
+            _kinectBV.poseDoubleStance.StopWatch.Start();
+            _kinectBV.poseDoubleStance.FrameStatus = "";
+            _kinectBV.ExecuteDoubleStanceTest = true;
+        }
+
+        private void Cancel()
+        {
+            infoUpdateTimer.Enabled = false;
+            wiiDevice.Disconnect();
+            _canConnectWBB = true;
+            _app.CurrentPageViewModel = _app.PreviousPageViewModel;
+        }
+
         /// <summary>
         /// Sets flag to calibabre zero weight load on the WBB.
         /// </summary>
@@ -384,6 +435,44 @@ namespace mBESS
             zeroWeight = 0;
             _doZeroCalibration = true;
         }
+        #endregion
+
+
+        // Save test results in xML file.
+        private void Save()
+        {
+
+        }
+
+        private void ClearAppDSRecords()
+        {
+            // Feet
+            _app.DSFL_X.Clear();
+            _app.DSFL_Y.Clear();
+            _app.DSFL_Z.Clear();
+            _app.DSFR_X.Clear();
+            _app.DSFR_Y.Clear();
+            _app.DSFR_Z.Clear();
+            // Hands
+            _app.DSHL_X.Clear();
+            _app.DSHL_Y.Clear();
+            _app.DSHL_Z.Clear();
+            _app.DSHR_X.Clear();
+            _app.DSHR_Y.Clear();
+            _app.DSHR_Z.Clear();
+            // Spine-Head
+            _app.DSHE_X.Clear();
+            _app.DSHE_Y.Clear();
+            _app.DSHE_Z.Clear();
+
+            _app.DSSM_X.Clear();
+            _app.DSSM_Y.Clear();
+            _app.DSSM_Z.Clear();
+
+            _app.DSSB_X.Clear();
+            _app.DSSB_Y.Clear();
+            _app.DSSB_Z.Clear();
+        }
 
         private void wiiDevice_WiimoteChanged(object sender, WiimoteChangedEventArgs e)
         {
@@ -402,8 +491,78 @@ namespace mBESS
             return _kinectBV;
         }
 
+        public string Name => throw new NotImplementedException();
 
         #region Properties
+
+        public string TrunkSway
+        {
+            get { return _trunkSway; }
+            set
+            {
+                if (_trunkSway != value)
+                {
+                    _trunkSway = value;
+                    OnPropertyChanged("TrunkSway");
+                }
+            }
+        }
+
+        public string LeftHand {
+            get { return _leftHand; }
+            set
+            {
+                if (_leftHand != value)
+                {
+                    _leftHand = value;
+                    OnPropertyChanged("LeftHand");
+                }
+            }
+        }
+
+        public string RightHand
+        {
+            get { return _rightHand; }
+            set
+            {
+                if (_rightHand != value)
+                {
+                    _rightHand = value;
+                    OnPropertyChanged("RightHand");
+                }
+            }
+        }
+
+        public string LeftFoot
+        {
+            get { return _leftFoot; }
+            set
+            {
+                if (_leftFoot != value)
+                {
+                    _leftFoot = value;
+                    OnPropertyChanged("LeftFoot");
+                }
+            }
+        }
+
+        public string RightFoot
+        {
+            get { return _rightFoot; }
+            set
+            {
+                if (_rightFoot != value)
+                {
+                    _rightFoot = value;
+                    OnPropertyChanged("RightFoot");
+                }
+            }
+        }
+
+
+
+        public int TotalDoubleStanceError { get; set; }
+
         public ImageSource ImageSource
         {
             get { return _kinectBV.ImageSource; }
@@ -585,6 +744,21 @@ namespace mBESS
                 }
             }
         }
+
+
+        public string TestTime
+        {
+            get { return _testTime; }
+            set
+            {
+                if (_testTime != value)
+                {
+                    _testTime = value;
+                    OnPropertyChanged("TestTime");
+                }
+            }
+        }
+
 
         public float ZeroCalWeight
         {

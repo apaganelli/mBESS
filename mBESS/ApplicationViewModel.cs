@@ -13,24 +13,52 @@ namespace mBESS
         private IPageViewModel _currentPageViewModel;
         private List<IPageViewModel> _pageViewModels;
 
-        public struct StructDoubleStanceReference
-        {
-            public Joint footRight;
-            public Joint footLeft;
-            public Joint handRight;
-            public Joint handLeft;
-            public Joint head;
-            public Joint spineBase;
-            public Joint spineMid;
-        }
 
+        #region Global variables
 
-        public static int MaxFramesReference = 150;
+        public int TestTime = 30;                                   // sets the time in seconds of each test
+        public int CalibrationTime = 5;                             // sets the time in seconds of calibration process
+        public double JointAxisPrecision = 0.03;                    // sets the precision in meters of the joint precision
+        public double AnglePrecision = 3;                           // sets the angle precision in degrees of trunk position (head, spine_mid, spine_base).
 
-        public StructDoubleStanceReference[] DSReference = new StructDoubleStanceReference[MaxFramesReference];
+        public int participantId = 0;                               // Selected participant id.
 
+        /// <summary>
+        /// This list of float values stores axis positions of the analyzed joints during pose calibration.
+        /// They are used to calculated standard values of joint position.
+        /// </summary>
+
+        // Feet
+        public List<float> DSFR_X = new List<float>();
+        public List<float> DSFR_Y = new List<float>();
+        public List<float> DSFR_Z = new List<float>();
+        public List<float> DSFL_X = new List<float>();
+        public List<float> DSFL_Y = new List<float>();
+        public List<float> DSFL_Z = new List<float>();
+        // Hands
+        public List<float> DSHR_X = new List<float>();
+        public List<float> DSHR_Y = new List<float>();
+        public List<float> DSHR_Z = new List<float>();
+        public List<float> DSHL_X = new List<float>();
+        public List<float> DSHL_Y = new List<float>();
+        public List<float> DSHL_Z = new List<float>();
+        // Spine-Head
+        public List<float> DSHE_X = new List<float>();
+        public List<float> DSHE_Y = new List<float>();
+        public List<float> DSHE_Z = new List<float>();
+        public List<float> DSSM_X = new List<float>();
+        public List<float> DSSM_Y = new List<float>();
+        public List<float> DSSM_Z = new List<float>();
+        public List<float> DSSB_X = new List<float>();
+        public List<float> DSSB_Y = new List<float>();
+        public List<float> DSSB_Z = new List<float>();
+
+        public static int MaxFramesReference = 150;                     // Number of frames - Pose calibration. Based on 30 frames per second.
+        
         // Counter for calibrating pose with kinect.
-        public int BodyCalibrationCounter { get; set; }
+        public int PoseCalibrationCounter { get; set; }
+#endregion
+
 
         /// <summary>
         /// The constructor activate the application default page and selects it as the active page.
